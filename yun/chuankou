@@ -1,0 +1,18 @@
+#include "stm32f10x_hal.h"
+#define USART1_TX_PIN GPIO_PIN_1
+#define USART1_RX_PIN GPIO_PIN_2
+#define USART1_GPIO_PORT GPIOA
+#define USART1_GPIO_CLK_ENABLE() __HAL_RCC_GPIOA_CLK_ENABLE()
+void USART1_GPIO_Init(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    /* ??GPIOA?? */
+    USART1_GPIO_CLK_ENABLE();
+
+    /* ??USART1 TX???AF_PP(??????) */
+    GPIO_InitStruct.Pin = USART1_TX_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF7_USART

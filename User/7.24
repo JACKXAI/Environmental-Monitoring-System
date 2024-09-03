@@ -1,0 +1,126 @@
+#include "ec20.h"
+#include "stdlib.h"
+#include "string.h"
+#include "usart.h"	
+#include "iwdg.h"
+
+int errcount = 0;
+char atstr[BUFLEN];
+char AtStrBuf[BUFLEN];
+char *strx,*extstrx,*Readystrx;
+extern char AtRxBuffer[512],Rxcouter;
+
+////////////////////////////////////////////////////////////////////
+char GPRMCSTR[128]; //??GPS?? GPRMC ?????????
+char GPRMCSTRLON[64]; //??????? ???119.20694
+char GPRMCSTRLAT[64]; //???????,???26.06451
+char IMEINUMBER[64];//+CGSN: "869523052178994"
+//////////////////??????????????/////////////////////////
+int Get_GPSdata(void);
+void Getdata_Change(char status);
+
+    typedef struct 
+{
+char UtcDate[6];
+char longitude[11];//?????
+char Latitude[10];//?????
+char longitudess[4];//????
+char Latitudess[3];
+char longitudedd[8];//?????
+char Latitudedd[8];
+char Truelongitude[12];//?????
+char TrueLatitude[11];//?????
+char getstautus;//??????????	
+float gpsdata[2];
+}LongLatidata;
+LongLatidata latdata;
+
+float tempdata[2];
+char latStrAF[64];          //???????????
+char lonStrAF[64];   				//???????????
+//////////////////////////??????///////////////////////////////////
+
+////////////////////////???????/////////////////////////////////
+#define PRODUCEKEY "6402ac07352830580e48ff7b_dev1_0_0_2023030403"        //??ID
+#define DEVICENAME "6402ac07352830580e48ff7b_dev1"           //???
+#define DEVICESECRET "517f1c8f18d6b7b2e4c134653dc892edd38c3e86153506df57f7c296d13b37f7" //??
+
+
+void Clear_Buffer(void)//????
+{
+    u8 i;
+		NBIOTSend_RecAccessMode();
+    printf(AtRxBuffer);
+    for(i=0;i<Rxcouter;i++)
+        AtRxBuffer[i]=0;//??
+    Rxcouter=0;
+
+}
+
+
+//?????
+void  NBIOT_Init(void)
+{
+    Uart2_SendStr("AT\r\n");
+    delay_ms(500);
+    strx=strstr((const char*)AtRxBuffer,(const char*)"OK");//??OK
+    errcount = 0;
+    while(strx==NULL)
+    {
+        errcount++;
+        printf("\r\n??????????...\r\n");
+        Clear_Buffer();
+        Uart2_SendStr("AT\r\n");
+        delay_ms(500);
+        strx=strstr((const char*)AtRxBuffer,(const char*)"OK");//??OK
+        if(errcount>50)     //?????
+        {
+            errcount = 0;
+            reset_4g();
+            __set_FAULTMASK(1); //?????
+            NVIC_SystemReset(); //???????
+            break;
+        }
+    }
+
+    Uart2_SendStr("ATE1\r\n"); //??
+    delay_ms(500);
+    Clear_Buffer();
+
+    /////////////////////////////////
+    Uart2_SendStr("AT+CPIN?\r\n");//??SIM?????
+    delay_ms(500);
+    strx=strstr((const char*)AtRxBuffer,(const char*)"+CPIN: READY");//??????ready
+    while(strx==NULL)
+    {
+        Clear_Buffer();
+        Uart2_SendStr("AT+CPIN?\r\n");
+        delay_ms(500);
+        strx=strstr((const char*)AtRxBuffer,(const char*)"+CPIN: READY");//??SIM?????,?????,???????,??????????
+    }
+    Clear_Buffer();
+    ///////////////////////////////////////
+    Uart2_SendStr("AT+CSQ\r\n"); //??CSQ
+    delay_ms(500);
+    Clear_Buffer();
+    Uart2_SendStr("ATI\r\n"); //????????
+    delay_ms(500);
+    Clear_Buffer();
+
+
+    ///////////////////////////////////
+    Uart2_SendStr("AT+CREG?\r\n");//??????GSM??
+    delay_ms(500);
+    Clear_Buffer();
+
+    Uart2_SendStr("AT+CEREG?\r\n");//??????????,???? ?? ??
+    delay_ms(500);
+    Clear_Buffer();
+
+    Uart2_SendStr("AT+CIMI\r\n");//????,??????????,?????
+    delay_ms(1000);
+    strx=strstr((const char*)AtRxBuffer,(const char*)"OK");//?????? ?????
+    if(strx)
+    {
+        printf("============\r\n????? : %s \r\n===============\r\n",AtRxBuffer);
+        delay_ms(1000);
